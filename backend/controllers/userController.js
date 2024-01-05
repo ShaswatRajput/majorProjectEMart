@@ -2,6 +2,7 @@ const ErrorHandler = require("../utils/errorhandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const User = require("../models/userModels");
 const sendToken = require("../utils/jwttoken");
+const sendEmail = require("../utils/sendEmail.js")
 
 //register a user
 exports.registerUser = catchAsyncErrors(async(req,res,next)=>{
@@ -51,4 +52,42 @@ exports.logoutUser = catchAsyncErrors( async(req,res,next)=>{
         success:true,
         message:"Logged Out",
     })
+})
+
+//Forget Password
+exports.forgetPassword = catchAsyncErrors(async (req,res,next)=>{
+
+    const user = await User.findOne({email:req.body.email});
+
+    if(!user){
+        return next(new ErrorHandler('User not found',404))
+    }
+
+    //Get reset Password Token 
+    const resetToken = user.getResetPasswordToken();
+    await user.save({validateBeforeSave: false });
+
+    const resetPasswordUrl = `${req.protocol}://${req.get("host")}/api/v1/password/reset/${resetToken}`
+    const message = `Hey user, here is your password reset link- \n\n ${resetPasswordUrl} \n\n If you have not requested this password reset then its time to panic and be concerned about your security`
+    
+    try {
+        
+        await sendEmail ({
+            email:user.email,
+            subject: `MajorEcom password Recovery`,
+            message,
+             
+        })
+        res.status(200).json({
+            success:true,
+            message:`Email sent to ${user.email} successfully`,
+        })
+    } catch (error) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save({validateBeforeSave:false})
+        return next(new ErrorHandler(error.message, 500))
+
+    }
 })
