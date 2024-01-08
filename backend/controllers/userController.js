@@ -3,6 +3,7 @@ const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const User = require("../models/userModels");
 const sendToken = require("../utils/jwttoken");
 const sendEmail = require("../utils/sendEmail.js")
+const crypto = require("crypto")
 
 //register a user
 exports.registerUser = catchAsyncErrors(async(req,res,next)=>{
@@ -34,7 +35,8 @@ exports.loginUser = catchAsyncErrors(async(req,res,next)=>{
     if(!user){
         return next(new ErrorHandler("Invalid E-mail or password",401))
     }
-    const isPasswordMatched = user.comparePassword(password);
+    const isPasswordMatched = await user.comparePassword(password);
+   
     if(!isPasswordMatched){
         return next(new ErrorHandler("Invalid E-mail or password",401));
     }
@@ -62,7 +64,7 @@ exports.forgetPassword = catchAsyncErrors(async (req,res,next)=>{
     if(!user){
         return next(new ErrorHandler('User not found',404))
     }
-
+    
     //Get reset Password Token 
     const resetToken = user.getResetPasswordToken();
     await user.save({validateBeforeSave: false });
@@ -91,3 +93,67 @@ exports.forgetPassword = catchAsyncErrors(async (req,res,next)=>{
 
     }
 })
+
+//Reset Password 
+exports.resetPassword = catchAsyncErrors(async (req,res,next)=>{
+    
+    //Creating token hash
+    const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex")
+
+    const user = await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: {$gt: Date.now()},
+    })
+    if(!user){
+        return next(new ErrorHandler("Reset Password Token is invalid or has expired",400));
+
+    }
+    if(req.body.password !==req.body.confirmPassword){
+        return next(new ErrorHandler("Password and Confirm Password doesn't match",400));
+    }
+    
+    user.password = req.body.password
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+    sendToken(user,200,res);
+
+})
+
+// get user details
+
+exports.getUserDetails = catchAsyncErrors(async(req,res,next)=>{
+    const user = await User.findById(req.user.id)
+
+    res.status(200).json({
+        success:true,
+        user,
+    })
+
+})
+
+//Update user password 
+exports.updatePassword = catchAsyncErrors(async(req,res,next)=>{
+    
+    const user = await User.findById(req.user.id).select("+password") 
+    
+    const isPasswordMatched = await user.comparePassword(req.body.oldPassword)
+
+    if(!isPasswordMatched){
+        return next(new ErrorHandler("Old Password is incorrect",400))
+    }
+
+    if(req.body.newPassword !== req.body.confirmPassword){
+        return next(new ErrorHandler("Password and confirm Password doesnt match",400))
+    }
+
+    user.password = req.body.newPassword
+    await user.save()
+    sendToken(user,200,res);
+
+})
+
