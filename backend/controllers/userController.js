@@ -7,7 +7,7 @@ const crypto = require("crypto")
 
 //register a user
 exports.registerUser = catchAsyncErrors(async(req,res,next)=>{
-    const {name,email,password } =req.body;
+    const {name,email,password} =req.body;
     const user = await User.create({
         name,
         email,
@@ -15,7 +15,8 @@ exports.registerUser = catchAsyncErrors(async(req,res,next)=>{
         avatar:{
             public_id: "this is a sample id",
             url:"profileUrl",
-        }
+        },
+       
     })
     sendToken(user,201,res)
 
@@ -176,3 +177,66 @@ exports.updateProfile = catchAsyncErrors(async(req,res,next)=>{
 
 })
 
+//get list of all users (Admin)
+
+exports.getAllUsers = catchAsyncErrors(async(req,res,next)=>{
+    const users = await User.find({})
+
+    res.status(200).json({
+        success:true,
+        users
+    })
+})
+
+//get single user (Admin)
+
+exports.getSingleUser = catchAsyncErrors(async(req,res,next)=>{
+    const user = await User.findById(req.params.id)
+    if(!user){
+        return next(new ErrorHandler(`No user found with ID: ${req.params.id}`,400))
+    }
+
+    res.status(200).json({
+        success:true,
+        user
+    })
+})
+
+//Update Role (Admin)
+
+exports.updateRole = catchAsyncErrors(async(req,res,next)=>{
+    
+    const newDataObj = {
+        name:req.body.name,
+        email:req.body.email,
+        role:req.body.role
+    }
+  
+    const user = await User.findByIdAndUpdate(req.user.id,newDataObj,{
+        new:true,
+        runValidators:true,
+        useFindAndModify:false,
+    })
+    res.status(200).json({
+        success:true,
+    })
+
+})
+
+// Delete a particular user (Admin)
+
+exports.deleteUser = catchAsyncErrors(async(req,res,next)=>{
+    
+    const user = await User.findById(req.params.id)
+    //we will remove cloudinary later
+
+    if(!user){
+        return next(new ErrorHandler(`We can't find a user by ID ${req.params.id}`,400))
+    }
+    await user.deleteOne() 
+
+    res.status(200).json({
+        success:true,
+    })
+
+})
