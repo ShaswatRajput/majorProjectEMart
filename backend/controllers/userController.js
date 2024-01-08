@@ -157,3 +157,22 @@ exports.updatePassword = catchAsyncErrors(async(req,res,next)=>{
 
 })
 
+//Edit profile
+exports.updateProfile = catchAsyncErrors(async(req,res,next)=>{
+    
+    const newDataObj = {
+        name:req.body.name,
+        email:req.body.email
+    }
+    //we will add cloudiary later
+    const user = await User.findByIdAndUpdate(req.user.id,newDataObj,{
+        new:true,
+        runValidators:true,
+        useFindAndModify:false,
+    })
+    res.status(200).json({
+        success:true,
+    })
+
+})
+
