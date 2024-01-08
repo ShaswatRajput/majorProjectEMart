@@ -212,11 +212,14 @@ exports.updateRole = catchAsyncErrors(async(req,res,next)=>{
         role:req.body.role
     }
   
-    const user = await User.findByIdAndUpdate(req.user.id,newDataObj,{
+    const user = await User.findByIdAndUpdate(req.params.id,newDataObj,{
         new:true,
         runValidators:true,
         useFindAndModify:false,
     })
+    if(!user){
+        return next(new ErrorHandler(`We couldn't find any user with ID: ${req.params.id}`))
+    }
     res.status(200).json({
         success:true,
     })
@@ -237,6 +240,7 @@ exports.deleteUser = catchAsyncErrors(async(req,res,next)=>{
 
     res.status(200).json({
         success:true,
+        message:"user deleted succesfully"
     })
 
 })

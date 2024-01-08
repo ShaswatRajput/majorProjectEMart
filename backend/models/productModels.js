@@ -19,7 +19,7 @@ const productSchema = mongoose.Schema({
         maxLength:[8,"Cant be this expensive,provide a lesser value"]
 
     },
-    rating:{
+    ratings:{
         type: Number,
         default: 0
     },
@@ -49,7 +49,12 @@ const productSchema = mongoose.Schema({
        default:0
     },
     reviews:[
-        {
+        {   
+            user:{
+                type:mongoose.Schema.ObjectId,
+                ref:"User",
+                required:true,
+            },
             name:{
                 type:String,
                 required:true,
